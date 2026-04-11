@@ -1,4 +1,5 @@
 import os
+from typing import Any
 import numpy as np
 import torch
 import torch.nn as nn
@@ -131,9 +132,9 @@ class RelabelImageFolder(datasets.ImageFolder):
 
 def data_setup10():
     train_all = datasets.MNIST('data', train=True, download=True, transform=transforms.ToTensor())
-    train_all = Subset(train_all, list(range(512*10)))
+    #train_all = Subset(train_all, list(range(512*10)))
     test = datasets.MNIST('data', train=False, download=True, transform=transforms.ToTensor())
-    test = Subset(test, list(range(512*2)))
+    #test = Subset(test, list(range(512*2)))
     n_train = int(0.8 * len(train_all))
     n_val = len(train_all) - n_train
     train, valid = random_split(train_all, [n_train, n_val])

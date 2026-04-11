@@ -1,8 +1,8 @@
 import random
 from tqdm import tqdm
 import numpy as np
-from B_2dataloader import DataLoader, MMDataLoader, PseudoDataLoader
-from B_2GcCnn import ControlGCN
+from dataloader import DataLoader, MMDataLoader, PseudoDataLoader
+from GcCnn import ControlGCN
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pytz
@@ -59,6 +59,7 @@ class Experiment:
         ent_all = np.zeros((len(test_loader), self.T), dtype=np.float16)
         mi_T_all = np.zeros((len(test_loader), self.T), dtype=np.int8)
         pi_T_all = np.zeros((len(test_loader), self.T), dtype=np.int8)
+        target_all = np.zeros(len(test_loader), dtype=np.int8)
 
         mi_rate = 0.
         for iter, (vecs, target) in enumerate(tqdm(test_loader, desc='Eval')):
@@ -68,6 +69,7 @@ class Experiment:
             mi_T_all[iter] = dict['mi_T']
             pi_T_all[iter] = dict['pi_T']
             mi_rate += sum(dict['mi_T']) / float(self.T)
+            target_all[iter] = target
             if dict['pred_step'] is not None:
                 pred_hist[dict['pred_step']] += 1
             #break
@@ -78,7 +80,7 @@ class Experiment:
         #print('brief mean & var {}, {}'.format(brief_all.mean(), brief_all.var()))
         print('ent mean & var {}, {}'.format(ent_all.mean(), ent_all.var()))
 
-        return brief_all, mi_T_all, pi_T_all
+        return brief_all, mi_T_all, pi_T_all, target_all
 
 
 def plot_brief(brief, name=''):
@@ -96,11 +98,11 @@ if __name__ == '__main__':
         'n_modals': 2,
         'n_modules': 10,
         'n_classes': 10,
-        'dpc': 1,
+        'dpc': 5,
         'T': 25,
         'recommendation': False,
         'num_trainmovement': 1,
-        'save': False,
+        'save': True,
         'n_seed': 1,
     }
     data_size = config['dpc'] * config['n_classes']
@@ -110,26 +112,28 @@ if __name__ == '__main__':
     brief_all = np.zeros((config['n_seed'], data_size, T), dtype=np.float16)
     mi_T_all = np.zeros((config['n_seed'], data_size, T), dtype=np.int8)
     pi_T_all = np.zeros((config['n_seed'], data_size, T), dtype=np.int8)
+    target_all = np.zeros((config['n_seed'], data_size), dtype=np.int8)
     for i in range(config['n_seed']):
         experiment = Experiment(**config)
-        brief, mi_T, pi_T = experiment.run(i)
+        brief, mi_T, pi_T, target = experiment.run(i)
         brief_all[i] = brief
         mi_T_all[i] = mi_T
         pi_T_all[i] = pi_T
+        target_all[i] = target
     
-    # i changed here
 
     # save
     japan_time = datetime.now(pytz.timezone("Asia/Tokyo"))
     now_ = japan_time.strftime("%m-%d-%H-%M")
     #plot_brief(brief_all, name=now_)
     if config['save']:
-        np.save("results2/week0/brief" + now_ + ".npy", brief_all)
-        np.save("results2/week0/mi_T" + now_ + ".npy", mi_T_all)
-        np.save("results2/week0/pi_T" + now_ + ".npy", pi_T_all)
+        results = {
+            'brief': brief_all,
+            'mi_T': mi_T_all,
+            'pi_T': pi_T_all,
+            'target': target_all,
+        }
+        config.pop('dataloader', None)
+        results.update(config)
+        np.save("results/week0/" + now_ + ".npy", results)
     
-    
-
-
-
-

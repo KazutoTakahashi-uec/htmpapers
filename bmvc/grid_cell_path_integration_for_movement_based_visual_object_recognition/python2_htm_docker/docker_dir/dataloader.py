@@ -145,12 +145,21 @@ class PseudoDataLoader:
             # 2. add pseudo data (class 5~9) by copying class 0~4
             for idx in label_idx:
                 d_base = {}
-                d_base[0] = vecs[0][idx]
-                d_base[1] = vecs[1][idx]
-
                 d_dash = {}
-                d_dash[0] = vecs[0][idx]
-                d_dash[1] = self.alter_vecs(vecs[1][idx])
+
+                if label % 2 == 0:
+                    d_base[0] = vecs[0][idx]
+                    d_base[1] = vecs[1][idx]
+
+                    d_dash[0] = vecs[0][idx]
+                    d_dash[1] = self.alter_vecs(vecs[1][idx])
+                else:
+                    d_base[0] = vecs[0][idx]
+                    d_base[1] = vecs[1][idx]
+
+                    d_dash[0] = self.alter_vecs(vecs[0][idx])
+                    d_dash[1] = vecs[1][idx]
+
 
                 vecs_all.append(d_base)
                 vecs_all.append(d_dash)
@@ -164,7 +173,7 @@ class PseudoDataLoader:
         new_vecs = np.zeros_like(vecs)
 
         # decide pixel to alter
-        pixels = [20,21,22,23,24]
+        pixels = [i for i in range(20, 25)]
 
         # alter vectors
         for pixel in pixels:
