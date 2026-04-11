@@ -98,7 +98,7 @@ if __name__ == '__main__':
         'n_modals': 2,
         'n_modules': 10,
         'n_classes': 10,
-        'dpc': 5,
+        'dpc': 10,
         'T': 25,
         'recommendation': False,
         'num_trainmovement': 1,
