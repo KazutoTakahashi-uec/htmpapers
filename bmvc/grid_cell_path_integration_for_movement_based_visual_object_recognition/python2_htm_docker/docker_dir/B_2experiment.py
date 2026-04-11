@@ -8,7 +8,7 @@ from datetime import datetime
 import pytz
 
 class Experiment:
-    def __init__(self, dataloader=DataLoader, n_modals=1, n_modules=40, n_classes=10, dpc=1, T=25, recommendation=False, num_trainmovement=1):
+    def __init__(self, dataloader=DataLoader, n_modals=1, n_modules=40, n_classes=10, dpc=1, T=25, recommendation=False, num_trainmovement=1, **kwargs):
         self.model = ControlGCN
         self.loader = dataloader
         self.dpc = dpc
@@ -96,21 +96,21 @@ if __name__ == '__main__':
         'n_modals': 2,
         'n_modules': 10,
         'n_classes': 10,
-        'dpc': 10,
+        'dpc': 1,
         'T': 25,
         'recommendation': False,
         'num_trainmovement': 1,
+        'save': False,
+        'n_seed': 1,
     }
-    save = True
-    n_seed = 11
     data_size = config['dpc'] * config['n_classes']
     T = config['T']
 
     # run
-    brief_all = np.zeros((n_seed, data_size, T), dtype=np.float16)
-    mi_T_all = np.zeros((n_seed, data_size, T), dtype=np.int8)
-    pi_T_all = np.zeros((n_seed, data_size, T), dtype=np.int8)
-    for i in range(n_seed):
+    brief_all = np.zeros((config['n_seed'], data_size, T), dtype=np.float16)
+    mi_T_all = np.zeros((config['n_seed'], data_size, T), dtype=np.int8)
+    pi_T_all = np.zeros((config['n_seed'], data_size, T), dtype=np.int8)
+    for i in range(config['n_seed']):
         experiment = Experiment(**config)
         brief, mi_T, pi_T = experiment.run(i)
         brief_all[i] = brief
@@ -121,8 +121,8 @@ if __name__ == '__main__':
     # save
     japan_time = datetime.now(pytz.timezone("Asia/Tokyo"))
     now_ = japan_time.strftime("%m-%d-%H-%M")
-    plot_brief(brief_all, name=now_)
-    if save:
+    #plot_brief(brief_all, name=now_)
+    if config['save']:
         np.save("results2/week0/brief" + now_ + ".npy", brief_all)
         np.save("results2/week0/mi_T" + now_ + ".npy", mi_T_all)
         np.save("results2/week0/pi_T" + now_ + ".npy", pi_T_all)
