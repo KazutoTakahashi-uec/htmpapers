@@ -146,17 +146,14 @@ class PseudoDataLoader:
             for idx in label_idx:
                 d_base = {}
                 d_dash = {}
+                
+                d_base[0] = vecs[0][idx]
+                d_base[1] = vecs[1][idx]
 
                 if label % 2 == 0:
-                    d_base[0] = vecs[0][idx]
-                    d_base[1] = vecs[1][idx]
-
-                    d_dash[0] = vecs[0][idx]
-                    d_dash[1] = self.alter_vecs(vecs[1][idx])
+                    d_dash[0] = self.alter_vecs(vecs[0][idx])#vecs[0][idx]
+                    d_dash[1] = vecs[1][idx]#self.alter_vecs(vecs[1][idx])
                 else:
-                    d_base[0] = vecs[0][idx]
-                    d_base[1] = vecs[1][idx]
-
                     d_dash[0] = self.alter_vecs(vecs[0][idx])
                     d_dash[1] = vecs[1][idx]
 
@@ -168,7 +165,7 @@ class PseudoDataLoader:
         
         return np.array(vecs_all), labels_all
     
-
+    
     def alter_vecs(self, vecs):
         new_vecs = np.zeros_like(vecs)
 
@@ -193,6 +190,152 @@ class PseudoDataLoader:
         return len(self.labels)
 
 
+class PseudoDataLoader0:
+    def __init__(self, data_per_class=1, n_classes=10, n_modals=1, train=True):
+        self.n_classes = n_classes
+        self.data_per_class = data_per_class
+        self.n_modal = 2
+
+        # dir name
+        dirs = {}
+        dirs[0] = 'dataset/10-5_'
+        dirs[1] = 'dataset/10-5_'
+        dir_train = '_training.npy' if train else '_testing.npy'
+
+        # load data
+        vecs = {}
+        labels = {}
+        for m in range(2):
+            vecs[m] = np.load(dirs[m] + 'vecs' + dir_train)
+            labels[m] = np.load(dirs[m] + 'labels' + dir_train)
+        
+        self.vecs, self.labels = self.load_data(vecs, labels)
+    
+
+    def load_data(self, vecs, labels):
+        vecs_all = []
+        labels_all = []
+        # 1. extract only class 0~4
+        for label in range(5):
+            label_idx = [i for i, v in enumerate(labels[0]) if v == label]
+            label_idx = np.random.choice(label_idx, self.data_per_class, replace=False)
+
+            # 2. add pseudo data (class 5~9) by copying class 0~4
+            for idx in label_idx:
+                d_base = {}
+                d_dash = {}
+                
+                d_base[0] = vecs[0][idx]
+                d_base[1] = vecs[1][idx]
+
+                d_dash[0] = self.alter_vecs(vecs[0][idx])#vecs[0][idx]
+                d_dash[1] = vecs[1][idx]#self.alter_vecs(vecs[1][idx])
+
+                vecs_all.append(d_base)
+                vecs_all.append(d_dash)
+
+                labels_all += [label, label+5]
+        
+        return np.array(vecs_all), labels_all
+    
+    
+    def alter_vecs(self, vecs):
+        new_vecs = np.zeros_like(vecs)
+
+        # decide pixel to alter
+        pixels = [i for i in range(20, 25)]
+
+        # alter vectors
+        for pixel in pixels:
+            idx = np.where(vecs[pixel, :] == 1)[0]
+            new_idx = np.mod(idx + 1, 128)
+            new_vecs[pixel, new_idx] = 1
+        
+        return new_vecs
+    
+    
+    def __iter__(self):
+        for vecs, label in zip(self.vecs, self.labels):
+            yield vecs, label
+    
+
+    def __len__(self):
+        return len(self.labels)
+
+
+
+class PseudoDataLoader1:
+    def __init__(self, data_per_class=1, n_classes=10, n_modals=1, train=True):
+        self.n_classes = n_classes
+        self.data_per_class = data_per_class
+        self.n_modal = 2
+
+        # dir name
+        dirs = {}
+        dirs[0] = 'dataset/10-5_'
+        dirs[1] = 'dataset/10-5_'
+        dir_train = '_training.npy' if train else '_testing.npy'
+
+        # load data
+        vecs = {}
+        labels = {}
+        for m in range(2):
+            vecs[m] = np.load(dirs[m] + 'vecs' + dir_train)
+            labels[m] = np.load(dirs[m] + 'labels' + dir_train)
+        
+        self.vecs, self.labels = self.load_data(vecs, labels)
+    
+
+    def load_data(self, vecs, labels):
+        vecs_all = []
+        labels_all = []
+        # 1. extract only class 0~4
+        for label in range(5):
+            label_idx = [i for i, v in enumerate(labels[0]) if v == label]
+            label_idx = np.random.choice(label_idx, self.data_per_class, replace=False)
+
+            # 2. add pseudo data (class 5~9) by copying class 0~4
+            for idx in label_idx:
+                d_base = {}
+                d_dash = {}
+                
+                d_base[0] = vecs[0][idx]
+                d_base[1] = vecs[1][idx]
+
+                d_dash[0] = vecs[0][idx]
+                d_dash[1] = self.alter_vecs(vecs[1][idx])
+
+
+                vecs_all.append(d_base)
+                vecs_all.append(d_dash)
+
+                labels_all += [label, label+5]
+        
+        return np.array(vecs_all), labels_all
+    
+    
+    def alter_vecs(self, vecs):
+        new_vecs = np.zeros_like(vecs)
+
+        # decide pixel to alter
+        pixels = [i for i in range(20, 25)]
+
+        # alter vectors
+        for pixel in pixels:
+            idx = np.where(vecs[pixel, :] == 1)[0]
+            new_idx = np.mod(idx + 1, 128)
+            new_vecs[pixel, new_idx] = 1
+        
+        return new_vecs
+    
+    
+    def __iter__(self):
+        for vecs, label in zip(self.vecs, self.labels):
+            yield vecs, label
+    
+
+    def __len__(self):
+        return len(self.labels)
 
 
 

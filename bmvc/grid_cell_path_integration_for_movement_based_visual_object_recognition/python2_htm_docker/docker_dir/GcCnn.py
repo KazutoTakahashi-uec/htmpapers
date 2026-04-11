@@ -313,8 +313,6 @@ class ControlGCN(object):
         pair = list(zip(pi_T, mi_T))
         random.shuffle(pair)
         pi_T, mi_T = zip(*pair)
-        #pi_T = range(25)
-        #random.shuffle(pi_T)
 
         for t in range(len(mi_T)): #self.T
             self.share_l6() if self.n_modals > 1 else None
@@ -341,7 +339,7 @@ class ControlGCN(object):
             if ss > 0:
                 self.network_move.learn(z_idx_prev, z_idx, ss=ss)
             elif ss < 0:
-                self.network_move.learn_negative(z_idx_prev, z_idx, ss=ss)
+                self.network_move.learn_negative(z_idx_prev, z_idx, ss=-ss)
             
             # old
             """if ent < ent_prev:
@@ -417,15 +415,15 @@ class ControlGCN(object):
                         mi_T[t+1] = np.argmax(mf)
                 mf_seq[t] = mf
             
-            # 6. return
-            dict = {
-                'brief_seq': brief_seq,
-                'pred_step': pred_step,
-                'mf_seq': mf_seq,
-                'mi_T': mi_T,
-                'pi_T': pi_T,
-                'ent_seq': ent_seq,
-                }
+        # 6. return
+        dict = {
+            'brief_seq': brief_seq,
+            'pred_step': pred_step,
+            'mf_seq': mf_seq,
+            'mi_T': mi_T,
+            'pi_T': pi_T,
+            'ent_seq': ent_seq,
+            }
         
         return dict
     

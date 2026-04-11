@@ -11,7 +11,7 @@ testing_ground.py
 data/
 duty_cycle_results
 decoder_reconstructed_images
-results/
 predicted_images/
 saved_networks/
 __pycache__/
+dataset/

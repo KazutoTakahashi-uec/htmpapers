@@ -1,7 +1,7 @@
 import random
 from tqdm import tqdm
 import numpy as np
-from dataloader import DataLoader, MMDataLoader, PseudoDataLoader
+from dataloader import DataLoader, MMDataLoader, PseudoDataLoader, PseudoDataLoader0, PseudoDataLoader1
 from GcCnn import ControlGCN
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -15,6 +15,7 @@ class Experiment:
         self.T = T
         self.recommendation = recommendation
         self.num_trainmovement = num_trainmovement
+        self.datasize = dpc * n_classes
         self.config_model = {
             'n_modals': n_modals,
             'n_modules': n_modules,
@@ -81,6 +82,29 @@ class Experiment:
         print('ent mean & var {}, {}'.format(ent_all.mean(), ent_all.var()))
 
         return brief_all, mi_T_all, pi_T_all, target_all
+    
+
+    def run_seeds(self, n_seeds=1,):
+        brief_all = np.zeros((n_seeds, self.datasize, self.T), dtype=np.float16)
+        mi_T_all = np.zeros((n_seeds, self.datasize, self.T), dtype=np.int8)
+        pi_T_all = np.zeros((n_seeds, self.datasize, self.T), dtype=np.int8)
+        target_all = np.zeros((n_seeds, self.datasize), dtype=np.int8)
+
+        for i in range(n_seeds):
+            brief, mi_T, pi_T, target = self.run(i)
+
+            brief_all[i] = brief
+            mi_T_all[i] = mi_T
+            pi_T_all[i] = pi_T
+            target_all[i] = target
+        
+        results = {
+            'brief': brief_all,
+            'mi_T': mi_T_all,
+            'pi_T': pi_T_all,
+            'target': target_all,
+        }
+        return results
 
 
 def plot_brief(brief, name=''):
@@ -91,49 +115,85 @@ def plot_brief(brief, name=''):
     plt.clf()
 
 
+def save_result(results={},):
+    japan_time = datetime.now(pytz.timezone("Asia/Tokyo"))
+    now_ = japan_time.strftime("%m-%d-%H-%M")
+    np.save("results/week0/" + now_ + ".npy", results)
+
+
 if __name__ == '__main__':
+    # setting
+    config = {
+        'dataloader': PseudoDataLoader0,
+        'n_modals': 2,
+        'n_modules': 10,
+        'n_classes': 10,
+        'dpc': 10,
+        'T': 25,
+        'recommendation': True,
+        'num_trainmovement': 1,
+        'save': True,
+        'n_seeds': 1,
+    }
+
+    # run
+    experiment = Experiment(**config)
+    results = experiment.run_seeds(n_seeds=config['n_seeds'])
+
+    # save
+    config.pop('dataloader', None)
+    results.update(config)
+    if config['save']:
+        save_result(results)
+    
+    # ================================================
+    # setting
+    config = {
+        'dataloader': PseudoDataLoader1,
+        'n_modals': 2,
+        'n_modules': 10,
+        'n_classes': 10,
+        'dpc': 10,
+        'T': 25,
+        'recommendation': True,
+        'num_trainmovement': 1,
+        'save': True,
+        'n_seeds': 1,
+    }
+
+    # run
+    experiment = Experiment(**config)
+    results = experiment.run_seeds(n_seeds=config['n_seeds'])
+
+    # save
+    config.pop('dataloader', None)
+    results.update(config)
+    if config['save']:
+        save_result(results)
+    
+
+    # ================================================
     # setting
     config = {
         'dataloader': PseudoDataLoader,
         'n_modals': 2,
         'n_modules': 10,
         'n_classes': 10,
-        'dpc': 5,
+        'dpc': 20,
         'T': 25,
-        'recommendation': False,
+        'recommendation': True,
         'num_trainmovement': 1,
         'save': True,
-        'n_seed': 1,
+        'n_seeds': 7,
     }
-    data_size = config['dpc'] * config['n_classes']
-    T = config['T']
 
     # run
-    brief_all = np.zeros((config['n_seed'], data_size, T), dtype=np.float16)
-    mi_T_all = np.zeros((config['n_seed'], data_size, T), dtype=np.int8)
-    pi_T_all = np.zeros((config['n_seed'], data_size, T), dtype=np.int8)
-    target_all = np.zeros((config['n_seed'], data_size), dtype=np.int8)
-    for i in range(config['n_seed']):
-        experiment = Experiment(**config)
-        brief, mi_T, pi_T, target = experiment.run(i)
-        brief_all[i] = brief
-        mi_T_all[i] = mi_T
-        pi_T_all[i] = pi_T
-        target_all[i] = target
-    
+    experiment = Experiment(**config)
+    results = experiment.run_seeds(n_seeds=config['n_seeds'])
 
     # save
-    japan_time = datetime.now(pytz.timezone("Asia/Tokyo"))
-    now_ = japan_time.strftime("%m-%d-%H-%M")
-    #plot_brief(brief_all, name=now_)
+    config.pop('dataloader', None)
+    results.update(config)
     if config['save']:
-        results = {
-            'brief': brief_all,
-            'mi_T': mi_T_all,
-            'pi_T': pi_T_all,
-            'target': target_all,
-        }
-        config.pop('dataloader', None)
-        results.update(config)
-        np.save("results/week0/" + now_ + ".npy", results)
+        save_result(results)
     
