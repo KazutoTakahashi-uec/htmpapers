@@ -116,7 +116,8 @@ if __name__ == '__main__':
         brief_all[i] = brief
         mi_T_all[i] = mi_T
         pi_T_all[i] = pi_T
-
+    
+    # i changed here
 
     # save
     japan_time = datetime.now(pytz.timezone("Asia/Tokyo"))
