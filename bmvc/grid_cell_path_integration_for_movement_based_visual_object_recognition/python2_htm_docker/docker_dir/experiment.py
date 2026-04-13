@@ -6,11 +6,14 @@ from GcCnn import ControlGCN
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pytz
+from collections import namedtuple
+
 
 class Experiment:
     def __init__(self, dataloader=DataLoader, n_modals=1, n_modules=40, n_classes=10, dpc=1, T=25, recommendation=False, num_trainmovement=1, **kwargs):
         self.model = ControlGCN
         self.loader = dataloader
+        self.n_modals = n_modals
         self.dpc = dpc
         self.T = T
         self.recommendation = recommendation
@@ -37,76 +40,80 @@ class Experiment:
         train_loader = self.loader(train=True, **self.config_loader)
         test_loader = self.loader(train=False, **self.config_loader)
 
-        # train
+        # --- train ---
         for vecs, target in tqdm(train_loader, desc='Train'):
             model.learn(vecs, target)
             #break
         
-        # train movement
+        # --- train movement ---
+        LM_storage = {
+            'mi_T_LM': [],
+            'pi_T_LM': [],
+            'target_LM': [],
+            'ent_LM': [],
+            'ss_LM': [],
+        }
         if self.recommendation:
             map = {1: 0, 5: 1, 10: 2, 20: 3}
             for i in range(self.num_trainmovement):
                 random.seed(seed_ + i)
                 np.random.seed(seed_ + i)
-                for vecs, target in tqdm(train_loader, desc='Train Movement {}'.format(i+1)):
-                    model.learn_movement(vecs, target, map[self.dpc])
+                for iter, (vecs, target) in enumerate(tqdm(train_loader, desc='Train Movement {}'.format(i+1))):
+                    results = model.learn_movement(vecs, target, map[self.dpc])
+                    for key in LM_storage:
+                        LM_storage[key].append(results[key])
                     #break
-                    
+        for key in LM_storage:
+            LM_storage[key] = np.array(LM_storage[key])
+        
 
-        # eval
+        # --- eval ---
         random.seed(seed_)
         np.random.seed(seed_)
-        brief_all = np.zeros((len(test_loader), self.T), dtype=np.float16)
-        pred_hist = np.zeros(self.T, dtype=float)
-        ent_all = np.zeros((len(test_loader), self.T), dtype=np.float16)
-        mi_T_all = np.zeros((len(test_loader), self.T), dtype=np.int8)
-        pi_T_all = np.zeros((len(test_loader), self.T), dtype=np.int8)
-        target_all = np.zeros(len(test_loader), dtype=np.int8)
-
-        mi_rate = 0.
+        Eval_storage = {
+            'brief_Eval': [],
+            'ent_Eval': [],
+            'pred_step_Eval': [],
+            'mf_Eval': [],
+            'mi_T_Eval': [],
+            'pi_T_Eval': [],
+            'target_Eval': [],
+        }
         for iter, (vecs, target) in enumerate(tqdm(test_loader, desc='Eval')):
-            dict = model.infer(vecs, target, data_idx=iter)
-            brief_all[iter] = dict['brief_seq']
-            ent_all[iter] = dict['ent_seq']
-            mi_T_all[iter] = dict['mi_T']
-            pi_T_all[iter] = dict['pi_T']
-            mi_rate += sum(dict['mi_T']) / float(self.T)
-            target_all[iter] = target
-            if dict['pred_step'] is not None:
-                pred_hist[dict['pred_step']] += 1
-            #break
-        print('brief {}'.format(brief_all.mean(axis=0)))
-        #print('accuracy {}'.format(np.cumsum(pred_hist) / float(len(test_loader))))
-        #print('modal_force {}'.format(mf))
-        print('MI rate {}'.format(mi_rate / len(test_loader)))
-        #print('brief mean & var {}, {}'.format(brief_all.mean(), brief_all.var()))
-        print('ent mean & var {}, {}'.format(ent_all.mean(), ent_all.var()))
+            results = model.infer(vecs, target, data_idx=iter)
+            for key in Eval_storage:
+                Eval_storage[key].append(results[key])
+        for key in Eval_storage:
+            Eval_storage[key] = np.array(Eval_storage[key])
 
-        return brief_all, mi_T_all, pi_T_all, target_all
-    
-     
+        return Eval_storage, LM_storage
+
+
     def run_seeds(self, n_seeds=1,):
-        brief_all = np.zeros((n_seeds, self.datasize, self.T), dtype=np.float16)
-        mi_T_all = np.zeros((n_seeds, self.datasize, self.T), dtype=np.int8)
-        pi_T_all = np.zeros((n_seeds, self.datasize, self.T), dtype=np.int8)
-        target_all = np.zeros((n_seeds, self.datasize), dtype=np.int8)
+        results = {
+            'mi_T_LM': [],
+            'pi_T_LM': [],
+            'target_LM': [],
+            'ent_LM': [],
+            'ss_LM': [],
+            'brief_Eval': [],
+            'ent_Eval': [],
+            'pred_step_Eval': [],
+            'mf_Eval': [],
+            'mi_T_Eval': [],
+            'pi_T_Eval': [],
+            'target_Eval': [],
+        }
 
         for i in range(n_seeds):
-            brief, mi_T, pi_T, target = self.run(i)
+            Eval_storage, LM_storage = self.run(i)
+            Eval_storage.update(LM_storage)
+            for key in Eval_storage:
+                results[key].append(Eval_storage[key])
 
-            brief_all[i] = brief
-            mi_T_all[i] = mi_T
-            pi_T_all[i] = pi_T
-            target_all[i] = target
-        
-        results = {
-            'brief': brief_all,
-            'mi_T': mi_T_all,
-            'pi_T': pi_T_all,
-            'target': target_all,
-        }
+        for key in results:
+            results[key] = np.array(results[key])
         return results
-
 
 def plot_brief(brief, name=''):
     avg = np.mean(brief, axis=1)
@@ -132,12 +139,12 @@ if __name__ == '__main__':
         'n_modals': 2,
         'n_modules': 10,
         'n_classes': 10,
-        'dpc': 20,
+        'dpc': 1,
         'T': 25,
         'recommendation': True,
         'num_trainmovement': 1,
         'save': True,
-        'n_seeds': 1,
+        'n_seeds': 2,
     }
 
     # run
