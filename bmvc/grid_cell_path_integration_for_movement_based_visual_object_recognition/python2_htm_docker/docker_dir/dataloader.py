@@ -161,19 +161,21 @@ class PseudoDataLoader:
                 vecs_all.append(d_base)
                 vecs_all.append(d_dash)
 
-                labels_all += [label, label+5]
+                labels_all += [2*label, 2*label+1]
         
         return np.array(vecs_all), labels_all
     
     
     def alter_vecs(self, vecs):
-        new_vecs = np.zeros_like(vecs)
+        new_vecs = vecs.copy()
 
         # decide pixel to alter
         pixels = [i for i in range(20, 25)]
 
         # alter vectors
         for pixel in pixels:
+            new_vecs[pixel, :] = 0
+            
             idx = np.where(vecs[pixel, :] == 1)[0]
             new_idx = np.mod(idx + 1, 128)
             new_vecs[pixel, new_idx] = 1
@@ -240,13 +242,15 @@ class PseudoDataLoader0:
     
     
     def alter_vecs(self, vecs):
-        new_vecs = np.zeros_like(vecs)
+        new_vecs = vecs.copy()
 
         # decide pixel to alter
         pixels = [i for i in range(20, 25)]
 
         # alter vectors
         for pixel in pixels:
+            new_vecs[pixel, :] = 0
+            
             idx = np.where(vecs[pixel, :] == 1)[0]
             new_idx = np.mod(idx + 1, 128)
             new_vecs[pixel, new_idx] = 1
@@ -315,13 +319,15 @@ class PseudoDataLoader1:
     
     
     def alter_vecs(self, vecs):
-        new_vecs = np.zeros_like(vecs)
+        new_vecs = vecs.copy()
 
         # decide pixel to alter
         pixels = [i for i in range(20, 25)]
 
         # alter vectors
         for pixel in pixels:
+            new_vecs[pixel, :] = 0
+            
             idx = np.where(vecs[pixel, :] == 1)[0]
             new_idx = np.mod(idx + 1, 128)
             new_vecs[pixel, new_idx] = 1
@@ -340,8 +346,9 @@ class PseudoDataLoader1:
 
 
 if __name__ == '__main__':
-    loader = PseudoDataLoader(data_per_class=1, n_modals=2)
+    loader = PseudoDataLoader1(data_per_class=1, n_modals=2)
     for vecs, label in loader:
-        print(vecs.keys())
-        print(vecs[1][24].sum())
+        #print(vecs.keys())
+        print(vecs[1][0])
         print(label)
+        #break

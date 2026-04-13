@@ -63,7 +63,7 @@ class WeightMatrix(object):
 
         # Step 2 : adjust wieght (this doesnt create new synapses)
         learnable_active_positive_segments = active_segments[np.isin(active_cells, post)]
-        learnable_active_negative_segments = active_segments[~np.isin(active_cells, post)]
+        #learnable_active_negative_segments = active_segments[~np.isin(active_cells, post)]
         potential_segments = potential_segments[np.isin(potential_cells, unpredicted_active_cells)]
         best_segment_idx = np2.argmaxMulti(potential_overlap[potential_segments], potential_cells)
         learnable_potential_segments = potential_segments[best_segment_idx]
@@ -72,21 +72,19 @@ class WeightMatrix(object):
         #print("learnable_potential_segments {}".format(learnable_potential_segments))
 
         self._adjust_weight(learnable_active_positive_segments, pre, self.initial_weight, self.delta*ss, -self.delta*ss)
-        self._adjust_weight(learnable_active_negative_segments, [], self.initial_weight, self.delta*ss, -self.delta*ss)
+        #self._adjust_weight(learnable_active_negative_segments, [], self.initial_weight, self.delta*ss, -self.delta*ss)
         self._adjust_weight(learnable_potential_segments, pre, self.initial_weight, self.delta*ss, -self.delta*ss)
 
         # Step 3 : create new segments and synapses
         new_segment_cells = np.setdiff1d(unpredicted_active_cells, potential_cells)
         newSegments = self.weight.createSegments(new_segment_cells)
         n_newsynapses = len(pre)
-        self.weight.growSynapsesToSample(
-            newSegments, pre, n_newsynapses, self.initial_weight, self.rng
-        )
+        self.weight.growSynapsesToSample(newSegments, pre, n_newsynapses, self.initial_weight, self.rng)
         self.pre_active_cells = active_cells
         pass
 
 
-    def learn_negative(self, pre, post, ss=1.):
+    def learn_negative(self, pre, post, ss=-1.):
         
         # Step 1 : activate segments and cells
         potential_overlap = self.weight.computeActivity(pre)
@@ -99,14 +97,17 @@ class WeightMatrix(object):
         learnable_potential_segments = potential_segments
         #print("learnable_potential_segments {}".format(learnable_potential_segments))
 
-        self._adjust_weight(learnable_potential_segments, [], self.initial_weight, self.delta*ss, -self.delta*ss)
+        self._adjust_weight(learnable_potential_segments, pre, self.initial_weight, self.delta*ss, 0.)
 
 
     def _adjust_weight(self, learnable_segments, input, initial, inc, dec):
         self.weight.adjustSynapses(learnable_segments, input, inc, dec)
+    
+    
+    def _grow_synapses(self, learnable_segments, input, initial):
         n_new_synapses = len(input)
         self.weight.growSynapsesToSample(learnable_segments, input, n_new_synapses, initial, self.rng)
-
+    
 
     def infer(self, input):
         if len(input) == 0:
@@ -339,7 +340,7 @@ class ControlGCN(object):
             if ss > 0:
                 self.network_move.learn(z_idx_prev, z_idx, ss=ss)
             elif ss < 0:
-                self.network_move.learn_negative(z_idx_prev, z_idx, ss=-ss)
+                self.network_move.learn_negative(z_idx_prev, z_idx, ss=ss)
             
             # old
             """if ent < ent_prev:

@@ -50,6 +50,7 @@ class Experiment:
                 np.random.seed(seed_ + i)
                 for vecs, target in tqdm(train_loader, desc='Train Movement {}'.format(i+1)):
                     model.learn_movement(vecs, target, map[self.dpc])
+                    #break
                     
 
         # eval
@@ -83,7 +84,7 @@ class Experiment:
 
         return brief_all, mi_T_all, pi_T_all, target_all
     
-
+     
     def run_seeds(self, n_seeds=1,):
         brief_all = np.zeros((n_seeds, self.datasize, self.T), dtype=np.float16)
         mi_T_all = np.zeros((n_seeds, self.datasize, self.T), dtype=np.int8)
@@ -115,64 +116,16 @@ def plot_brief(brief, name=''):
     plt.clf()
 
 
-def save_result(results={},):
+def save_result(results={}, config={}):
     japan_time = datetime.now(pytz.timezone("Asia/Tokyo"))
     now_ = japan_time.strftime("%m-%d-%H-%M")
+    
+    config['dataloader'] = config['dataloader'].__name__
+    results.update(config)
     np.save("results/week0/" + now_ + ".npy", results)
 
 
 if __name__ == '__main__':
-    # setting
-    config = {
-        'dataloader': PseudoDataLoader0,
-        'n_modals': 2,
-        'n_modules': 10,
-        'n_classes': 10,
-        'dpc': 10,
-        'T': 25,
-        'recommendation': True,
-        'num_trainmovement': 1,
-        'save': True,
-        'n_seeds': 1,
-    }
-
-    # run
-    experiment = Experiment(**config)
-    results = experiment.run_seeds(n_seeds=config['n_seeds'])
-
-    # save
-    config.pop('dataloader', None)
-    results.update(config)
-    if config['save']:
-        save_result(results)
-    
-    # ================================================
-    # setting
-    config = {
-        'dataloader': PseudoDataLoader1,
-        'n_modals': 2,
-        'n_modules': 10,
-        'n_classes': 10,
-        'dpc': 10,
-        'T': 25,
-        'recommendation': True,
-        'num_trainmovement': 1,
-        'save': True,
-        'n_seeds': 1,
-    }
-
-    # run
-    experiment = Experiment(**config)
-    results = experiment.run_seeds(n_seeds=config['n_seeds'])
-
-    # save
-    config.pop('dataloader', None)
-    results.update(config)
-    if config['save']:
-        save_result(results)
-    
-
-    # ================================================
     # setting
     config = {
         'dataloader': PseudoDataLoader,
@@ -184,7 +137,7 @@ if __name__ == '__main__':
         'recommendation': True,
         'num_trainmovement': 1,
         'save': True,
-        'n_seeds': 7,
+        'n_seeds': 1,
     }
 
     # run
@@ -192,8 +145,11 @@ if __name__ == '__main__':
     results = experiment.run_seeds(n_seeds=config['n_seeds'])
 
     # save
-    config.pop('dataloader', None)
-    results.update(config)
     if config['save']:
-        save_result(results)
+        save_result(results, config)
+    
+    # ================================================
+    
+
+    # ================================================
     
