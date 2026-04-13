@@ -14,3 +14,4 @@ decoder_reconstructed_images
 predicted_images/
 saved_networks/
 __pycache__/
+dataset/

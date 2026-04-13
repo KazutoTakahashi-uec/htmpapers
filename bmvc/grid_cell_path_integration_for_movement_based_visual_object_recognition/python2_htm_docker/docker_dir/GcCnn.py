@@ -63,7 +63,7 @@ class WeightMatrix(object):
 
         # Step 2 : adjust wieght (this doesnt create new synapses)
         learnable_active_positive_segments = active_segments[np.isin(active_cells, post)]
-        learnable_active_negative_segments = active_segments[~np.isin(active_cells, post)]
+        #learnable_active_negative_segments = active_segments[~np.isin(active_cells, post)]
         potential_segments = potential_segments[np.isin(potential_cells, unpredicted_active_cells)]
         best_segment_idx = np2.argmaxMulti(potential_overlap[potential_segments], potential_cells)
         learnable_potential_segments = potential_segments[best_segment_idx]
@@ -72,21 +72,19 @@ class WeightMatrix(object):
         #print("learnable_potential_segments {}".format(learnable_potential_segments))
 
         self._adjust_weight(learnable_active_positive_segments, pre, self.initial_weight, self.delta*ss, -self.delta*ss)
-        self._adjust_weight(learnable_active_negative_segments, [], self.initial_weight, self.delta*ss, -self.delta*ss)
+        #self._adjust_weight(learnable_active_negative_segments, [], self.initial_weight, self.delta*ss, -self.delta*ss)
         self._adjust_weight(learnable_potential_segments, pre, self.initial_weight, self.delta*ss, -self.delta*ss)
 
         # Step 3 : create new segments and synapses
         new_segment_cells = np.setdiff1d(unpredicted_active_cells, potential_cells)
         newSegments = self.weight.createSegments(new_segment_cells)
         n_newsynapses = len(pre)
-        self.weight.growSynapsesToSample(
-            newSegments, pre, n_newsynapses, self.initial_weight, self.rng
-        )
+        self.weight.growSynapsesToSample(newSegments, pre, n_newsynapses, self.initial_weight, self.rng)
         self.pre_active_cells = active_cells
         pass
 
 
-    def learn_negative(self, pre, post, ss=1.):
+    def learn_negative(self, pre, post, ss=-1.):
         
         # Step 1 : activate segments and cells
         potential_overlap = self.weight.computeActivity(pre)
@@ -99,15 +97,18 @@ class WeightMatrix(object):
         learnable_potential_segments = potential_segments
         #print("learnable_potential_segments {}".format(learnable_potential_segments))
 
-        self._adjust_weight(learnable_potential_segments, [], self.initial_weight, self.delta*ss, -self.delta*ss)
+        self._adjust_weight(learnable_potential_segments, pre, self.initial_weight, self.delta*ss, 0.)
 
 
     def _adjust_weight(self, learnable_segments, input, initial, inc, dec):
         self.weight.adjustSynapses(learnable_segments, input, inc, dec)
+    
+    
+    def _grow_synapses(self, learnable_segments, input, initial):
         n_new_synapses = len(input)
         self.weight.growSynapsesToSample(learnable_segments, input, n_new_synapses, initial, self.rng)
-
-
+    
+    
     def infer(self, input):
         if len(input) == 0:
             return []
@@ -302,23 +303,28 @@ class ControlGCN(object):
     
     
     def learn_movement(self, vecs=None, target=None, dpc_idx=0):
-        self.reset()
-        z_idx_prev = []
-        ent_prev = entropy([1./self.n_classes]*self.n_classes)
-        ent_mean = self.ent_mean[dpc_idx]
-        ent_var = self.ent_var[dpc_idx]
-        #mi_T = [0]*self.T
+        
+        # Step0-0. Set mi_T & pi_T
         mi_T = [0]*25 + [1]*25
         pi_T = [i for i in range(25)] + [i for i in range(0, 25)]
         pair = list(zip(pi_T, mi_T))
         random.shuffle(pair)
         pi_T, mi_T = zip(*pair)
-        #pi_T = range(25)
-        #random.shuffle(pi_T)
 
+        # Step0-1. Initialize Variable
+        self.reset()
+        z_idx_prev = []
+        ent_prev = entropy([1./self.n_classes]*self.n_classes)
+        ent_mean = self.ent_mean[dpc_idx]
+        ent_var = self.ent_var[dpc_idx]
+        ent_seq = np.zeros((len(mi_T, )), dtype=np.float32)
+        ss_seq = np.zeros((len(mi_T)), dtype=np.float32)
+        
+        
+        # Step1. Start Learning
         for t in range(len(mi_T)): #self.T
             self.share_l6() if self.n_modals > 1 else None
-
+            
             # Update
             pi = pi_T[t]
             mi = mi_T[t]
@@ -350,7 +356,14 @@ class ControlGCN(object):
             
             z_idx_prev = z_idx
 
-        pass
+        dict = {
+            'ent_LM': ent_seq,
+            'ss_LM': ss_seq,
+            'mi_T_LM': mi_T,
+            'pi_T_LM': pi_T,
+            'target_LM': target,
+        }
+        return dict
     
     
     def infer(self, vecs=None, target=None, data_idx=0):
@@ -417,16 +430,17 @@ class ControlGCN(object):
                         mi_T[t+1] = np.argmax(mf)
                 mf_seq[t] = mf
             
-            # 6. return
-            dict = {
-                'brief_seq': brief_seq,
-                'pred_step': pred_step,
-                'mf_seq': mf_seq,
-                'mi_T': mi_T,
-                'pi_T': pi_T,
-                'ent_seq': ent_seq,
-                }
-        
+        # 6. return
+        dict = {
+            'brief_Eval': brief_seq,
+            'pred_step_Eval': pred_step,
+            'mf_Eval': mf_seq,
+            'mi_T_Eval': mi_T,
+            'pi_T_Eval': pi_T,
+            'ent_Eval': ent_seq,
+            'target_Eval': target,
+            }
+            
         return dict
     
 

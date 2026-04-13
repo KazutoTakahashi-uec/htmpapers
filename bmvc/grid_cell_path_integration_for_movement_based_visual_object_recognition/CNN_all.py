@@ -117,18 +117,6 @@ def test(model, loader, criterion, save_name=None, grid_size=5):
             "total_correct": total_correct}
 
 
-class RelabelImageFolder(datasets.ImageFolder):
-    def __init__(self, root, transform=None, target_transform=None):
-        super().__init__(root, transform=transform, target_transform=target_transform)
-        
-        self.class_to_true_label = {0: 10, 1: 11}
-        #self.class_to_true_label = {i: int(cls_name) for cls_name, i in self.class_to_idx.items()}
-
-    def __getitem__(self, index):
-        image, label = super().__getitem__(index)
-        true_label = self.class_to_true_label[label]
-        return image, true_label
-
 
 def data_setup10():
     train_all = datasets.MNIST('data', train=True, download=True, transform=transforms.ToTensor())
@@ -177,3 +165,17 @@ if __name__ == "__main__":
         # save for testing GCN
         print('saving for testing GCN')
         test(model, test_l, criterion=xent, save_name='testing')
+
+
+
+class RelabelImageFolder(datasets.ImageFolder):
+    def __init__(self, root, transform=None, target_transform=None):
+        super().__init__(root, transform=transform, target_transform=target_transform)
+        
+        self.class_to_true_label = {0: 10, 1: 11}
+        #self.class_to_true_label = {i: int(cls_name) for cls_name, i in self.class_to_idx.items()}
+
+    def __getitem__(self, index):
+        image, label = super().__getitem__(index)
+        true_label = self.class_to_true_label[label]
+        return image, true_label

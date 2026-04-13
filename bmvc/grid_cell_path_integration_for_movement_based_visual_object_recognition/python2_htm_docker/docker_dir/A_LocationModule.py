@@ -285,11 +285,6 @@ class Superficial2DLocationModule(object):
     
     phases = phases.reshape(-1, 2)
     self.activePhases = np.concatenate([self.activePhases, phases])
-    #print(self.activePhases)
-    #self.activePhases = np.unique(self.activePhases)
-    #if len(self.activePhases) > 1e7:
-    #tqdm.write('len(actPhases) {}'.format(len(self.activePhases)))
-      #exit()
     pass
 
 
