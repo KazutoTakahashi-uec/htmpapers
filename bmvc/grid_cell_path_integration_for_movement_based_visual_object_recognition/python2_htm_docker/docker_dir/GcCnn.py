@@ -32,8 +32,15 @@ from A_LocationModule import Superficial2DLocationModule
 CELLWIDTH = 256
 
 
+def myent(l):
+    if max(l) == 0:
+        return entropy([1./len(l)] * len(l))
+    else:
+        return entropy(l)
+
+
 class WeightMatrix(object):
-    def __init__(self, n_cells=40*CELLWIDTH**2, activate_thresh=40, potential_thresh=0, weight_thresh=1./2., delta=1./16., initial_weight=7./16.):
+    def __init__(self, n_cells=40*CELLWIDTH**2, activate_thresh=40, potential_thresh=0, weight_thresh=1./2., delta=0.1, initial_weight=0.4):
         self.weight = SparseMatrixConnections(n_cells, n_cells)
         self.pre_active_cells = []
         self.active_cells = []
@@ -118,7 +125,7 @@ class WeightMatrix(object):
         active_cells = np.unique(self.weight.mapSegmentsToCells(active_segments))
 
         return active_cells
-    
+
 
 class GridCellNetwork(object):
     def __init__(self, n_modules=40, n_modals=1,):
@@ -214,27 +221,20 @@ class GridCellNetwork(object):
         pass
 
 
-    def activateRandomLocation(self, mi=0, fixed_phases=[]):
-        if fixed_phases:
+    def activateRandomLocation(self, mi=0, phases=[]):
+        if phases:
             for iter, module in enumerate(self.L6[mi]):
-                module.activateFixedLocation(fixed_phases[iter])
+                module.activateFixedLocation(phases[iter])
+            return phases
         else:
-            active_phases = []
-            for module in self.L6[mi]:
-                active_phase = module.activateRandomLocation()
-                active_phases.append(active_phase)
-        
+            active_phases = [module.activateRandomLocation() for module in self.L6[mi]]        
             return active_phases
-        pass
 
     
     def getLR(self, mi=0):
         activeCells = np.array([], dtype="uint32")
-
-        #totalPrevCells = 0
         for i, module in enumerate(self.L6[mi]):
             activeCells = np.append(activeCells, module.getActiveCells() + self.L6_cpmodule * i + self.L6_cpmodal * mi)
-            #totalPrevCells += module.numberOfCells()
 
         return activeCells
 
@@ -242,20 +242,24 @@ class GridCellNetwork(object):
     def getLLR(self, mi=0):
         learnableCells = np.array([], dtype="uint32")
 
-        #totalPrevCells = 0
         for i, module in enumerate(self.L6[mi]):
             learnableCells = np.append(learnableCells, module.getLearnableCells() + self.L6_cpmodule * i + self.L6_cpmodal * mi)
-            #totalPrevCells += module.numberOfCells()
 
         return learnableCells
 
     
     def getSALR(self, mi=0):
         cells = np.array([], dtype="uint32")
-        #prev_cells = 0
         for i, module in enumerate(self.L6[mi]):
             cells = np.append(cells, module.sensoryAssociatedCells + self.L6_cpmodule * i + self.L6_cpmodal * mi)
-            #prev_cells += module.numberOfCells()
+        return cells
+    
+
+    def getSALR_1module(self, mi=0):
+        cells = np.array([], dtype="uint32")
+        for i, module in enumerate(self.L6[mi]):
+            cells = np.append(cells, module.sensoryAssociatedCells + self.L6_cpmodule * i + self.L6_cpmodal * mi)
+            break
         return cells
 
 
@@ -280,24 +284,25 @@ class ControlGCN(object):
     def learn(self, vecs=None, target=None):
         self.reset()
         fixed_phases = []
-
+        scatter = MyScatter()
         for mi in range(self.n_modals):
-            #scatter = myscatter()
-            fixed_phases = self.network.activateRandomLocation(mi=mi, fixed_phases=fixed_phases)
+            fixed_phases = self.network.activateRandomLocation(mi=mi, phases=fixed_phases)
             assigned_cells = []
+            
+
             for t in range(25):
                 pi = t
                 coordinate = self.pi2coordinate(pi)
                 vec = (np.where(vecs[mi][pi] == 1))[0]
                 self.move(coordinate, mi=mi)
                 self.network.sensoryCompute(vec, learn=True, mi=mi)
-                #scatter.add_cell(self.network.getLR(mi=0)[0])
+                assigned_cell = self.network.getLR(mi=mi)#self.network.getSALR(mi=mi)
+                scatter.add_cell(self.network.getLR(mi=mi)[0])
 
-                assigned_cell = self.network.getSALR(mi=mi)
                 assigned_cells.extend(assigned_cell)
             
             self.linear[list(set(assigned_cells)), target] += 1
-            #scatter.plot()
+        scatter.plot(name='target={}.png'.format(target))
         
         pass
     
@@ -317,7 +322,9 @@ class ControlGCN(object):
         ent_prev = entropy([1./self.n_classes]*self.n_classes)
         ent_mean = self.ent_mean[dpc_idx]
         ent_var = self.ent_var[dpc_idx]
-        ent_seq = np.zeros((len(mi_T, )), dtype=np.float32)
+        dist_seq = np.zeros((len(mi_T), self.n_modals, self.n_classes), dtype=np.float32)
+        ent_seq = np.zeros((len(mi_T), self.n_modals, self.n_classes), dtype=np.float32)
+        ent_diff = np.zeros((len(mi_T)), dtype=np.float32)
         ss_seq = np.zeros((len(mi_T)), dtype=np.float32)
         
         
@@ -338,11 +345,18 @@ class ControlGCN(object):
             z = np.zeros(self.l6_cells)
             z[z_idx] = 1
             y = np.matmul(z, self.linear)
-            distribution = y / sum(y) if max(y) != 0 else y
+
+            dist_list = self.classify()
+            dist_seq[t] = dist_list
+            ent_list = [myent(dist) for dist in dist_list]
+            ent_diff[t] = ent_list[1] - ent_list[0]
 
             # learn movement
-            ent = entropy(distribution) if max(distribution) != 0 else entropy([1./self.n_classes]*self.n_classes)
+            distribution = y / sum(y) if max(y) != 0 else y
+            ent = myent(distribution)
+            ent_seq[t] = ent
             ss = (ent_mean - ent) / math.sqrt(ent_var)
+            ss_seq[t] = ss
             # new
             if ss > 0:
                 self.network_move.learn(z_idx_prev, z_idx, ss=ss)
@@ -357,8 +371,10 @@ class ControlGCN(object):
             z_idx_prev = z_idx
 
         dict = {
+            'dist_LM': dist_seq,
             'ent_LM': ent_seq,
             'ss_LM': ss_seq,
+            'entdiff_LM': ent_diff,
             'mi_T_LM': mi_T,
             'pi_T_LM': pi_T,
             'target_LM': target,
@@ -371,15 +387,19 @@ class ControlGCN(object):
 
         pi_T = range(25)
         #mi_T = [0]*20 + [1]*5
-        mi_T = [random.randint(0, 1) for _ in range(25)]
+        mi_T = [random.randint(0, self.n_modals-1) for _ in range(25)]
+        #mi_T = [0]*25
         random.shuffle(pi_T)
         #random.shuffle(mi_T)
 
         pred_flag = False
         pred_step = None
-        brief_seq = np.zeros(self.T, dtype=np.float16)
-        mf_seq = np.zeros((self.T, self.n_modals), dtype=np.float16)
-        ent_seq = np.zeros(self.T, dtype=np.float16)
+        dist_seq = np.zeros((self.T, self.n_classes), dtype=np.float32)
+        dist2_seq = np.zeros((self.T, self.n_modals, self.n_classes), dtype=np.float32)
+        brief_seq = np.zeros(self.T, dtype=np.float32)
+        mf_seq = np.zeros((self.T, self.n_modals), dtype=np.float32)
+        ent_seq = np.zeros(self.T, dtype=np.float32)
+        ent_diff = np.zeros(self.T, dtype=np.float32)
 
         for t in range(self.T):
             # 1. Share
@@ -396,14 +416,26 @@ class ControlGCN(object):
             self.network.sensoryCompute(vec, learn=False, mi='all')
 
             # 3. Evaluation
-            z_idx = [x for mi in range(self.n_modals) for x in self.network.getSALR(mi=mi)]
+            z_idx = [x for i in range(self.n_modals) for x in self.network.getSALR(mi=i)]
+            scatter = MyScatter()
+            z_for_scatter = [x for i in range(self.n_modals) for x in self.network.getSALR_1module(mi=i)]
+            scatter.add_cells(z_for_scatter)
+            scatter.plot(name='di={}_step={}_place={}-{}.png'.format(data_idx, t, mi, pi), title='place={}-{}'.format(mi, pi))
+
+            #print(z_idx)
             z = np.zeros(self.l6_cells)
             z[z_idx] = 1
             y = np.matmul(z, self.linear)
+
+            dist_list = self.classify()
+            dist2_seq[t] = dist_list
+            ent_list = [myent(dist) for dist in dist_list]
+            ent_diff[t] = ent_list[1] - ent_list[0]
             
             # 4.1 new classify
             distribution = y / sum(y) if max(y) != 0 else y
-            ent = entropy(distribution) if max(distribution) != 0 else entropy([1./self.n_classes]*self.n_classes)
+            ent = myent(distribution)
+            dist_seq[t] = distribution
             ent_seq[t] = ent
             brief_seq[t] = distribution[target]
 
@@ -432,22 +464,27 @@ class ControlGCN(object):
             
         # 6. return
         dict = {
+            'dist_Eval': dist_seq,
+            'dist2_Eval': dist2_seq,
             'brief_Eval': brief_seq,
             'pred_step_Eval': pred_step,
             'mf_Eval': mf_seq,
             'mi_T_Eval': mi_T,
             'pi_T_Eval': pi_T,
             'ent_Eval': ent_seq,
+            'entdiff_Eval': ent_diff,
             'target_Eval': target,
             }
-            
+
         return dict
     
 
     def share_l6(self, data_idx=0):
         for module_idx in range(self.n_modules):
+
             all_phases = np.concatenate([self.network.L6[j][module_idx].getActivePhases() 
                                          for j in range(self.n_modals) ])
+                                         
             if all_phases.size > 0:
                 all_phases = np.unique(all_phases, axis=0)
 
@@ -481,6 +518,20 @@ class ControlGCN(object):
             self.current[mi] = current
 
     
+    def classify(self,):
+        distributions = []
+        for mi in range(self.n_modals):
+            z = np.zeros(self.l6_cells)
+            z_idx = [x for x in self.network.getSALR(mi=mi)]
+            z[z_idx] = 1
+
+            y = np.matmul(z, self.linear)
+            dist = y / sum(y) if max(y) != 0 else y
+            distributions.append(dist)
+        
+        return distributions
+
+
     def pi2coordinate(self, pi=None):
         scale = 20
         coordinate = {}
@@ -497,20 +548,37 @@ class ControlGCN(object):
         pass
 
 
-class myscatter:
+class MyScatter:
     def __init__(self):
         self.x = []
         self.y = []
+        self.x2 = []
+        self.y2 = []
 
 
     def add_cell(self, c):
-        self.x.append(c % CELLWIDTH)
-        self.y.append(c // CELLWIDTH)
+        if c <= CELLWIDTH**2:
+            self.x.append(c % CELLWIDTH)
+            self.y.append(c // CELLWIDTH)
+        else:
+            c = c % CELLWIDTH**2
+            self.x2.append(c % CELLWIDTH)
+            self.y2.append(c // CELLWIDTH)
         pass
 
 
-    def plot(self, name='noname.png'):
-        plt.scatter(self.x, self.y)
+    def add_cells(self, cells):
+        for c in cells:
+            self.add_cell(c)
+        pass
+
+
+    def plot(self, name='noname.png', title=''):
+        plt.scatter(self.x, self.y, c='blue', alpha=0.5)
+        plt.scatter(self.x2, self.y2, c='orange', alpha=0.5)
+        plt.title(title)
         plt.xlim((0,255))
         plt.ylim((0,255))
-        plt.savefig('results/' + name)
+        plt.savefig(name)
+        plt.clf()
+

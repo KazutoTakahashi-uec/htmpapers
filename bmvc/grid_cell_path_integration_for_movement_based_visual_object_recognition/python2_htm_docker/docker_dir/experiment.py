@@ -6,11 +6,21 @@ from GcCnn import ControlGCN
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pytz
+<<<<<<< HEAD
+=======
+from collections import namedtuple, defaultdict
+
+>>>>>>> a7d644b5a99aa7d60a3eba94639d5b2ebe808732
 
 class Experiment:
-    def __init__(self, dataloader=DataLoader, n_modals=1, n_modules=40, n_classes=10, dpc=1, T=25, recommendation=False, num_trainmovement=1, **kwargs):
+    def __init__(self, dataloader=DataLoader, use_train_in_testing=False, n_modals=1, n_modules=40, n_classes=10, dpc=1, T=25, recommendation=False, num_trainmovement=1, **kwargs):
         self.model = ControlGCN
         self.loader = dataloader
+<<<<<<< HEAD
+=======
+        self.train = use_train_in_testing
+        self.n_modals = n_modals
+>>>>>>> a7d644b5a99aa7d60a3eba94639d5b2ebe808732
         self.dpc = dpc
         self.T = T
         self.recommendation = recommendation
@@ -34,26 +44,48 @@ class Experiment:
         np.random.seed(seed_)
         model = self.model(**self.config_model)
         train_loader = self.loader(train=True, **self.config_loader)
-        test_loader = self.loader(train=False, **self.config_loader)
+        test_loader = self.loader(train=self.train, **self.config_loader)
+        storage = defaultdict(list)
 
+<<<<<<< HEAD
         # train
         for vecs, target in tqdm(train_loader, desc='Train'):
+=======
+        # --- train ---
+        for iter, (vecs, target) in enumerate(tqdm(train_loader, desc='Train')):
+>>>>>>> a7d644b5a99aa7d60a3eba94639d5b2ebe808732
             model.learn(vecs, target)
+            if iter == 1:
+                break
             #break
         
+<<<<<<< HEAD
         # train movement
+=======
+        # --- train movement ---
+>>>>>>> a7d644b5a99aa7d60a3eba94639d5b2ebe808732
         if self.recommendation:
             map = {1: 0, 5: 1, 10: 2, 20: 3}
             for i in range(self.num_trainmovement):
                 random.seed(seed_ + i)
                 np.random.seed(seed_ + i)
+<<<<<<< HEAD
                 for vecs, target in tqdm(train_loader, desc='Train Movement {}'.format(i+1)):
                     model.learn_movement(vecs, target, map[self.dpc])
                     
+=======
+                for iter, (vecs, target) in enumerate(tqdm(train_loader, desc='Train Movement {}'.format(i+1))):
+                    results = model.learn_movement(vecs, target, map[self.dpc])
+                    for k, v in results.items():
+                        storage[k].append(v)
+                    #break
+        
+>>>>>>> a7d644b5a99aa7d60a3eba94639d5b2ebe808732
 
         # eval
         random.seed(seed_)
         np.random.seed(seed_)
+<<<<<<< HEAD
         brief_all = np.zeros((len(test_loader), self.T), dtype=np.float16)
         pred_hist = np.zeros(self.T, dtype=float)
         ent_all = np.zeros((len(test_loader), self.T), dtype=np.float16)
@@ -83,6 +115,38 @@ class Experiment:
         return brief_all, mi_T_all, pi_T_all, target_all
 
 
+=======
+        pred_hist = np.zeros(self.T, dtype=np.float32)
+        for iter, (vecs, target) in enumerate(tqdm(test_loader, desc='Eval')):
+            results = model.infer(vecs, target, data_idx=iter)
+            pred_t = results['pred_step_Eval']
+            if pred_t is not None:
+                pred_hist[pred_t] += 1
+            for k, v in results.items():
+                storage[k].append(v)
+            if iter == 1:
+                break
+
+        print('brief : {}'.format(np.mean(storage['brief_Eval'], axis=0)))
+        print('mi_rate : {}'.format(np.mean(storage['mi_T_Eval'])))
+        #print('accuracy {}'.format(np.cumsum(pred_hist) / float(len(test_loader))))
+
+        return storage
+
+
+    def run_seeds(self, n_seeds=1,):
+        results = defaultdict(list)
+
+        for i in range(n_seeds):
+            storage = self.run(i)
+            for k, v in storage.items():
+                results[k].append(v)
+
+        results = {k: np.array(v) for k, v in results.items()}
+        return results
+
+
+>>>>>>> a7d644b5a99aa7d60a3eba94639d5b2ebe808732
 def plot_brief(brief, name=''):
     avg = np.mean(brief, axis=1)
     med = np.median(avg, axis=0)
@@ -94,7 +158,8 @@ def plot_brief(brief, name=''):
 if __name__ == '__main__':
     # setting
     config = {
-        'dataloader': PseudoDataLoader,
+        'dataloader': PseudoDataLoader0,
+        'use_train_in_testing': True,  
         'n_modals': 2,
         'n_modules': 10,
         'n_classes': 10,
@@ -103,7 +168,11 @@ if __name__ == '__main__':
         'recommendation': False,
         'num_trainmovement': 1,
         'save': True,
+<<<<<<< HEAD
         'n_seed': 1,
+=======
+        'n_seeds': 1,
+>>>>>>> a7d644b5a99aa7d60a3eba94639d5b2ebe808732
     }
     data_size = config['dpc'] * config['n_classes']
     T = config['T']
@@ -127,6 +196,7 @@ if __name__ == '__main__':
     now_ = japan_time.strftime("%m-%d-%H-%M")
     #plot_brief(brief_all, name=now_)
     if config['save']:
+<<<<<<< HEAD
         results = {
             'brief': brief_all,
             'mi_T': mi_T_all,
@@ -136,4 +206,11 @@ if __name__ == '__main__':
         config.pop('dataloader', None)
         results.update(config)
         np.save("results/week0/" + now_ + ".npy", results)
+=======
+        save_result(results, config)
+    
+    # ================================================
+
+    # ================================================
+>>>>>>> a7d644b5a99aa7d60a3eba94639d5b2ebe808732
     

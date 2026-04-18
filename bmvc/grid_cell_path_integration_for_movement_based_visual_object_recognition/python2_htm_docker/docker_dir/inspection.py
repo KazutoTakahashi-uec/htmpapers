@@ -33,7 +33,7 @@ CELLWIDTH = 256
 
 
 class WeightMatrix(object):
-    def __init__(self, n_cells=40*CELLWIDTH**2, activate_thresh=40, potential_thresh=0, weight_thresh=1./2., delta=1./16., initial_weight=7./16.):
+    def __init__(self, n_cells=40*CELLWIDTH**2, activate_thresh=40, potential_thresh=0, weight_thresh=1./2., delta=0.1, initial_weight=0.4):
         self.weight = SparseMatrixConnections(n_cells, n_cells)
         self.pre_active_cells = []
         self.active_cells = []
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     for i in range(1):
         pre = [0,1,]
         post = [10,11,12]
-        w.learn_negative(pre, post, ss)
+        #w.learn_negative(pre, post, ss)
     print("===========")
 
     # Infer

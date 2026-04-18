@@ -114,10 +114,11 @@ class Superficial2DLocationModule(object):
     """
     self.activePhases = np.array([np.random.random(2)])
     self._computeActiveCells()
-    return self.activePhases
+    return self.activePhases.copy()
   
 
   def activateFixedLocation(self, phase):
+    #print('activateFixedLocation {}'.format(phase))
     self.activePhases = phase
     self._computeActiveCells()
 
@@ -129,8 +130,6 @@ class Superficial2DLocationModule(object):
     @param displacement (pair of floats)
     A translation vector [di, dj].
     """
-
-
     # Calculate delta in the module's coordinates.
     phaseDisplacement = (np.matmul(self.rotationMatrix, displacement) *
                          self.phasesPerUnitDistance)
