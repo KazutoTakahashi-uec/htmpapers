@@ -22,7 +22,7 @@ import numpy as np
 import random
 
 class DataLoader:
-    def __init__(self, data_per_class=1, n_classes=10, train=True):
+    def __init__(self, data_per_class=1, n_classes=10, train=True, n_modals=1):
         self.n_classes = n_classes
         self.data_per_class = data_per_class
         dir = 'dataset/10-5_'
@@ -138,7 +138,7 @@ class PseudoDataLoader:
         vecs_all = []
         labels_all = []
         # 1. extract only class 0~4
-        for label in range(5):
+        for label in range(5, 10):
             label_idx = [i for i, v in enumerate(labels[0]) if v == label]
             label_idx = np.random.choice(label_idx, self.data_per_class, replace=False)
 
@@ -151,17 +151,17 @@ class PseudoDataLoader:
                 d_base[1] = vecs[1][idx]
 
                 if label % 2 == 0:
-                    d_dash[0] = self.alter_vecs(vecs[0][idx])#vecs[0][idx]
-                    d_dash[1] = vecs[1][idx]#self.alter_vecs(vecs[1][idx])
-                else:
                     d_dash[0] = self.alter_vecs(vecs[0][idx])
                     d_dash[1] = vecs[1][idx]
+                else:
+                    d_dash[0] = vecs[0][idx]
+                    d_dash[1] = self.alter_vecs(vecs[1][idx])
 
 
                 vecs_all.append(d_base)
                 vecs_all.append(d_dash)
 
-                labels_all += [2*label, 2*label+1]
+                labels_all += [np.mod(2*label, 10), np.mod(2*label+1, 10)]
         
         return np.array(vecs_all), labels_all
     
@@ -203,6 +203,7 @@ class PseudoDataLoader0:
         dirs[0] = 'dataset/10-5_'
         dirs[1] = 'dataset/10-5_'
         dir_train = '_training.npy' if train else '_testing.npy'
+        print(dir_train)
 
         # load data
         vecs = {}
@@ -218,7 +219,7 @@ class PseudoDataLoader0:
         vecs_all = []
         labels_all = []
         # 1. extract only class 0~4
-        for label in range(5):
+        for label in range(5, 10):
             label_idx = [i for i, v in enumerate(labels[0]) if v == label]
             label_idx = np.random.choice(label_idx, self.data_per_class, replace=False)
 
@@ -236,7 +237,7 @@ class PseudoDataLoader0:
                 vecs_all.append(d_base)
                 vecs_all.append(d_dash)
 
-                labels_all += [label, label+5]
+                labels_all += [np.mod(2*label, 10), np.mod(2*label+1, 10)]
         
         return np.array(vecs_all), labels_all
     
@@ -260,6 +261,8 @@ class PseudoDataLoader0:
     
     def __iter__(self):
         for vecs, label in zip(self.vecs, self.labels):
+            #print('vecs[0][20]: {}'.format(vecs[0][20]))
+            #print('vecs[1][20]: {}'.format(vecs[1][20]))
             yield vecs, label
     
 
@@ -294,7 +297,7 @@ class PseudoDataLoader1:
         vecs_all = []
         labels_all = []
         # 1. extract only class 0~4
-        for label in range(5):
+        for label in range(5, 10):
             label_idx = [i for i, v in enumerate(labels[0]) if v == label]
             label_idx = np.random.choice(label_idx, self.data_per_class, replace=False)
 
@@ -313,7 +316,7 @@ class PseudoDataLoader1:
                 vecs_all.append(d_base)
                 vecs_all.append(d_dash)
 
-                labels_all += [label, label+5]
+                labels_all += [np.mod(2*label, 10), np.mod(2*label+1, 10)]
         
         return np.array(vecs_all), labels_all
     
@@ -346,9 +349,10 @@ class PseudoDataLoader1:
 
 
 if __name__ == '__main__':
-    loader = PseudoDataLoader1(data_per_class=1, n_modals=2)
+    loader = PseudoDataLoader0(data_per_class=1, n_modals=2)
     for vecs, label in loader:
         #print(vecs.keys())
-        print(vecs[1][0])
         print(label)
+        print(vecs[0][15])
+        print(vecs[1][15])
         #break
