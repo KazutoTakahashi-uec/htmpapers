@@ -1,0 +1,7 @@
+2026-04-19 23:50:04,987 - INFO - predicted_cells: [1, 2, 3]
+2026-04-19 23:50:45,980 - INFO - predicted_cells: [1, 2, 3]
+2026-04-19 23:50:45,980 - INFO - firing_cells: [2, 3, 4]
+2026-04-19 23:53:48,799 - INFO - predicted_cells: [1, 2, 3]
+2026-04-19 23:53:48,800 - INFO - firing_cells: [2, 3, 4]
+2026-04-20 00:00:56,363 - INFO - predicted_cells: [1, 2, 3]
+2026-04-20 00:00:56,363 - INFO - firing_cells: [2, 3, 4]

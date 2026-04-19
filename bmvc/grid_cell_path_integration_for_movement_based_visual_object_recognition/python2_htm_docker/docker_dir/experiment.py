@@ -45,8 +45,6 @@ class Experiment:
         # --- train ---
         for iter, (vecs, target) in enumerate(tqdm(train_loader, desc='Train')):
             model.learn(vecs, target)
-            if iter == 1:
-                break
             #break
         
         # --- train movement ---
@@ -69,12 +67,9 @@ class Experiment:
         for iter, (vecs, target) in enumerate(tqdm(test_loader, desc='Eval')):
             results = model.infer(vecs, target, data_idx=iter)
             pred_t = results['pred_step_Eval']
-            if pred_t is not None:
-                pred_hist[pred_t] += 1
+            pred_hist[pred_t] += 1 if pred_t is not None else 0
             for k, v in results.items():
                 storage[k].append(v)
-            if iter == 1:
-                break
 
         print('brief : {}'.format(np.mean(storage['brief_Eval'], axis=0)))
         print('mi_rate : {}'.format(np.mean(storage['mi_T_Eval'])))

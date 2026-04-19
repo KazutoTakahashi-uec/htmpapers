@@ -147,3 +147,8 @@ if __name__ == "__main__":
     pre = [0,1,2,]
     pred = w.infer(pre)
     print("pre = {} \npred = {}".format(pre, pred))
+
+    i = 5
+    for i in range(3):
+        print(i)
+    print(i)

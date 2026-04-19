@@ -171,11 +171,11 @@ class GridCellNetwork(object):
         }
         self.L4 = ApicalTiebreakPairMemory(**config)
         pass
-
+    
     
     def movementCompute(self, displacement, mi=0):
         location = {
-            "displacement": [displacement["top"],
+            "displacement": [-displacement["top"],
                              displacement["left"]],
         }
         for module in self.L6[mi]:
@@ -187,12 +187,13 @@ class GridCellNetwork(object):
     def sensoryCompute(self, vec=None, learn=True, mi=0):
         # L4
         basalInput = self.getLR(mi=mi) if learn \
-            else [x for mi in range(self.n_modals) for x in self.getLR(mi=mi)]
+            else [x for i in range(self.n_modals) for x in self.getLR(mi=i)]
+        basal_GC = self.getLLR(mi=mi) if learn else None
         l4_input = {
             "activeColumns": vec,
             "basalInput": basalInput,
-            "basalGrowthCandidates": self.getLLR(mi=mi),
-            "learn": learn
+            "basalGrowthCandidates": basal_GC,
+            "learn": learn,
         }
         self.L4.compute(**l4_input)
 
@@ -298,6 +299,11 @@ class ControlGCN(object):
                 self.network.sensoryCompute(vec, learn=True, mi=mi)
                 assigned_cell = self.network.getLR(mi=mi)#self.network.getSALR(mi=mi)
                 scatter.add_cell(self.network.getLR(mi=mi)[0])
+
+                #if t == 7:
+                #    break
+                #if t == 7:
+                #    scatter.plot(name='L_target={}_step={}_place={}-{}.png'.format(target, t, mi, pi), title='place={}-{}'.format(mi, pi))
 
                 assigned_cells.extend(assigned_cell)
             
@@ -417,10 +423,10 @@ class ControlGCN(object):
 
             # 3. Evaluation
             z_idx = [x for i in range(self.n_modals) for x in self.network.getSALR(mi=i)]
-            scatter = MyScatter()
             z_for_scatter = [x for i in range(self.n_modals) for x in self.network.getSALR_1module(mi=i)]
+            scatter = MyScatter()
             scatter.add_cells(z_for_scatter)
-            scatter.plot(name='di={}_step={}_place={}-{}.png'.format(data_idx, t, mi, pi), title='place={}-{}'.format(mi, pi))
+            scatter.plot(name='{}/step={}_place={}-{}.png'.format(data_idx, t, mi, pi), title='place={}-{}'.format(mi, pi))
 
             #print(z_idx)
             z = np.zeros(self.l6_cells)
@@ -478,7 +484,7 @@ class ControlGCN(object):
 
         return dict
     
-
+    
     def share_l6(self, data_idx=0):
         for module_idx in range(self.n_modules):
 
@@ -501,10 +507,10 @@ class ControlGCN(object):
 
         if mi == 'all':
             if self.current[0] is not None:
-                for mi in range(self.n_modals):
-                    displacement = {"top": current['top'] - self.current[mi]['top'],
-                                    "left": current['left'] - self.current[mi]['left'],}
-                    self.network.movementCompute(displacement, mi=mi)
+                for i in range(self.n_modals):
+                    displacement = {"top": current['top'] - self.current[i]['top'],
+                                    "left": current['left'] - self.current[i]['left'],}
+                    self.network.movementCompute(displacement, mi=i)
         elif self.current[mi] is not None:
             displacement = {
                 "top": current['top'] - self.current[mi]['top'],
@@ -513,10 +519,10 @@ class ControlGCN(object):
             self.network.movementCompute(displacement, mi=mi)
         
         if mi == 'all':
-            self.current = {mi: current for mi in range(self.n_modals)}
+            self.current = {i: current for i in range(self.n_modals)}
         else:
             self.current[mi] = current
-
+    
     
     def classify(self,):
         distributions = []
@@ -579,6 +585,6 @@ class MyScatter:
         plt.title(title)
         plt.xlim((0,255))
         plt.ylim((0,255))
-        plt.savefig(name)
+        plt.savefig('picture/' + name)
         plt.clf()
 

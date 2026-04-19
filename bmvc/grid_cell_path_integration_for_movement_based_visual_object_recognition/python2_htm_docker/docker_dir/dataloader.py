@@ -353,6 +353,8 @@ if __name__ == '__main__':
     for vecs, label in loader:
         #print(vecs.keys())
         print(label)
-        print(vecs[0][15])
-        print(vecs[1][15])
+        print(vecs[0][22])
+        print(vecs[1][22])
+        if label == 1:
+            break
         #break
