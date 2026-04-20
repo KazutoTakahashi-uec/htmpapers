@@ -21,13 +21,15 @@
 import math
 import numpy as np
 import random
+import csv
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from scipy.stats import entropy
-from htmresearch.support import numpy_helpers as np2
-from nupic.bindings.math import Random, SparseMatrixConnections
 from A_ApicalTemporalMemory import ApicalTiebreakPairMemory
 from A_LocationModule import Superficial2DLocationModule
+from htmresearch.support import numpy_helpers as np2
+from nupic.bindings.math import Random, SparseMatrixConnections
+
 CELLWIDTH = 10
 
 class GridCellNetwork(object):
@@ -101,18 +103,21 @@ class GridCellNetwork(object):
             "learn": learn,
         }
         self.L4.compute(**l4_input)
-        print('l4 input {}'.format(l4_input))
-        print('l4 active cells {}'.format(self.L4.getActiveCells()))
+        #print('l4 input {}'.format(l4_input))
+        #print('l4 active cells {}'.format(self.L4.getActiveCells()))
+        print('l4 basal input {}'.format(basalInput))
 
         # L6
         anchorinput = self.L4.getActiveCells()
-        anchorinput = [0,5,10,12] if not learn else anchorinput
+        #anchorinput = [0,5,10,12] if not learn else anchorinput
         l6_input = {
             "anchorInput": anchorinput,
             "anchorGrowthCandidates": self.L4.getWinnerCells(),
             "learn": learn,
         }
-        print('l6 input {}'.format(l6_input))
+        #print('l6 input {}'.format(l6_input))
+        print('l4 active cells {}'.format(self.L4.getActiveCells()))
+        print('l4 growth cand {}'.format(self.L4.getWinnerCells()))
         if learn:
             for module in self.L6[mi]:
                 module.sensoryCompute(**l6_input)
@@ -182,10 +187,16 @@ if __name__ == "__main__":
     gcn.activateRandomLocation()
     gcn.sensoryCompute(vec=[0,1,2,3,], learn=True)
     gcn.reset()
-    
+
+    gcn.activateRandomLocation()
+    gcn.sensoryCompute(vec=[0,1,2,3,], learn=True)
+    gcn.reset()
     # Eval
     print('----- Eval -----')
     gcn.sensoryCompute(vec=[0,1,2,3,], learn=False)
+    print('l6 pred: {}'.format(gcn.getSALR(mi=0)))
+
+    gcn.sensoryCompute(vec=[4,1,2,3,], learn=False)
     print('l6 pred: {}'.format(gcn.getSALR(mi=0)))
 
 

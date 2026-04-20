@@ -22,6 +22,7 @@ import math
 import numpy as np
 import random
 import copy
+import csv
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from scipy.stats import entropy
@@ -181,6 +182,11 @@ class GridCellNetwork(object):
         for module in self.L6[mi]:
             module.movementCompute(**location)
         
+        with open('log.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            act_cells = self.l6[mi][0].getActiveCells()
+            writer.writerow(['act l6 after movement', act_cells])
+        
         return location
     
     
@@ -196,6 +202,11 @@ class GridCellNetwork(object):
             "learn": learn,
         }
         self.L4.compute(**l4_input)
+        with open('log.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['l4 active colum', vec])
+            writer.writerow(['l4 active cells', self.L4.getActiveCells()])
+            writer.writerow(['l4 growth candidates', self.L4.getWinnerCells()])
 
         # L6
         l6_input = {
@@ -211,6 +222,10 @@ class GridCellNetwork(object):
                 for module in layer:
                     module.sensoryCompute(**l6_input)
         
+        with open('log.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            act_cells = self.L6[mi][0].getActiveCells()
+            writer.writerow(['act l6 after sensory', act_cells])
         pass
     
     
@@ -292,6 +307,9 @@ class ControlGCN(object):
             
 
             for t in range(25):
+                with open('log.csv', 'a', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(['time', t, 'mi', mi, 'pi', t, 'target', target])
                 pi = t
                 coordinate = self.pi2coordinate(pi)
                 vec = (np.where(vecs[mi][pi] == 1))[0]
